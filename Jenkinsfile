@@ -46,8 +46,11 @@ pipeline {
                 )]) {
                     sh '''
                         echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+
                         docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
                         docker push $DOCKERHUB_USERNAME/$IMAGE_NAME:latest
+
+                        docker logout
                     '''
                 }
             }
@@ -62,7 +65,7 @@ pipeline {
                     kubectl apply -f k8s/service.yaml
 
                     kubectl set image deployment/$K8S_DEPLOYMENT \
-                    java-cicd-container=$DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
+                        java-cicd-container=$DOCKERHUB_USERNAME/$IMAGE_NAME:$IMAGE_TAG
 
                     kubectl rollout status deployment/$K8S_DEPLOYMENT
                 '''
@@ -74,22 +77,23 @@ pipeline {
                 echo 'Starting port-forward for browser access...'
 
                 sh '''
-                    pkill -f "kubectl port-forward.*30080:8080" || true
-
                     export JENKINS_NODE_COOKIE=dontKillMe
 
                     nohup kubectl port-forward \
-                    --address=0.0.0.0 \
-                    service/$K8S_SERVICE \
-                    30080:8080 \
-                    > java-app-port-forward.log 2>&1 &
+                        --address=0.0.0.0 \
+                        service/$K8S_SERVICE \
+                        30080:8080 \
+                        > java-app-port-forward.log 2>&1 &
 
                     sleep 5
+
+                    echo "Checking port-forward process..."
+                    ps -ef | grep "kubectl port-forward" | grep -v grep || true
 
                     echo "Testing application..."
                     curl http://127.0.0.1:30080/ || true
 
-                    echo "Application is available at:"
+                    echo "Application URL:"
                     echo "http://kuberops.centralindia.cloudapp.azure.com:30080/"
                 '''
             }
@@ -100,11 +104,16 @@ pipeline {
                 echo 'Verifying Kubernetes deployment...'
 
                 sh '''
+                    echo "=== Deployment ==="
                     kubectl get deployments
+
+                    echo "=== Pods ==="
                     kubectl get pods
+
+                    echo "=== Services ==="
                     kubectl get svc
 
-                    echo "Testing application through port-forward..."
+                    echo "=== Application Test ==="
                     curl http://127.0.0.1:30080/ || true
                 '''
             }
@@ -114,7 +123,7 @@ pipeline {
     post {
         success {
             echo 'CI/CD pipeline completed successfully.'
-            echo 'Open: http://kuberops.centralindia.cloudapp.azure.com:30080/'
+            echo 'Application URL: http://kuberops.centralindia.cloudapp.azure.com:30080/'
         }
 
         failure {
