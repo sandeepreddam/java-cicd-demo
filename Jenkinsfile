@@ -2,7 +2,7 @@ pipeline {
     agent any
 
     environment {
-        DOCKERHUB_USERNAME = 'devopsrk16'
+        DOCKERHUB_USERNAME = 'reddamsandeep'
         IMAGE_NAME = 'java-cicd-demo'
         IMAGE_TAG = "${BUILD_NUMBER}"
         K8S_DEPLOYMENT = 'java-cicd-deployment'
