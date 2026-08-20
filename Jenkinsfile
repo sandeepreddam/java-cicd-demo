@@ -74,15 +74,20 @@ pipeline {
                 echo 'Starting port-forward for browser access...'
 
                 sh '''
-                    pkill -f "kubectl port-forward --address 0.0.0.0 service/$K8S_SERVICE" || true
+                    pkill -f "kubectl port-forward.*30080:8080" || true
+
+                    export JENKINS_NODE_COOKIE=dontKillMe
 
                     nohup kubectl port-forward \
-                    --address 0.0.0.0 \
+                    --address=0.0.0.0 \
                     service/$K8S_SERVICE \
                     30080:8080 \
                     > java-app-port-forward.log 2>&1 &
 
                     sleep 5
+
+                    echo "Testing application..."
+                    curl http://127.0.0.1:30080/ || true
 
                     echo "Application is available at:"
                     echo "http://kuberops.centralindia.cloudapp.azure.com:30080/"
@@ -99,7 +104,8 @@ pipeline {
                     kubectl get pods
                     kubectl get svc
 
-                    curl -I http://127.0.0.1:30080/ || true
+                    echo "Testing application through port-forward..."
+                    curl http://127.0.0.1:30080/ || true
                 '''
             }
         }
